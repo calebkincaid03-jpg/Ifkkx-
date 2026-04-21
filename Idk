@@ -1,0 +1,58 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import ta
+import time
+
+st.set_page_config(page_title="Market Trend Dashboard", layout="wide")
+
+st.title("📊 Live Market Trend Dashboard")
+
+# Auto-refresh (Streamlit reruns script)
+st.write("🔄 Auto-refreshing every 60 seconds")
+
+# Tickers to track
+tickers = ["SPY", "QQQ", "AAPL"]
+
+for symbol in tickers:
+
+    data = yf.Ticker(symbol).history(period="6mo")
+    close = data["Close"]
+
+    # Moving averages
+    short_ma = close.rolling(window=5).mean().iloc[-1]
+    long_ma = close.rolling(window=20).mean().iloc[-1]
+
+    # RSI
+    rsi = ta.momentum.RSIIndicator(close).rsi().iloc[-1]
+
+    # MACD
+    macd = ta.trend.MACD(close)
+    macd_val = macd.macd().iloc[-1]
+    macd_signal = macd.macd_signal().iloc[-1]
+
+    # Trend logic
+    if short_ma > long_ma * 1.01 and rsi < 70 and macd_val > macd_signal:
+        trend = "📈 STRONG UPTREND"
+    elif short_ma < long_ma * 0.99 and rsi > 30 and macd_val < macd_signal:
+        trend = "📉 STRONG DOWNTREND"
+    else:
+        trend = "➖ SIDEWAYS / WEAK TREND"
+
+    st.subheader(symbol)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Short MA", round(short_ma, 2))
+    col2.metric("Long MA", round(long_ma, 2))
+    col3.metric("RSI", round(rsi, 2))
+
+    st.write("MACD:", round(macd_val, 2), " | Signal:", round(macd_signal, 2))
+    st.markdown(f"### Trend Signal: {trend}")
+
+    st.line_chart(close)
+
+    st.divider()
+
+# Auto-refresh hack (reruns script)
+time.sleep(60)
+st.rerun()
